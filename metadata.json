@@ -1,0 +1,6 @@
+{
+  "name": "AURELIA EDU",
+  "description": "Platform pembelajaran interaktif terpadu untuk jenjang SD, SMP, SMA, SMK, dan Perguruan Tinggi dengan sistem bab terstruktur, evaluasi, nyawa, dan penghargaan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
