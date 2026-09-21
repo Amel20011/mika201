@@ -17,9 +17,10 @@ import { LeaderboardView } from './components/LeaderboardView';
 import { HistoryView } from './components/HistoryView';
 import { AccountView } from './components/AccountView';
 import { SettingsView } from './components/SettingsView';
+import { ScoreAuditModal } from './components/ScoreAuditModal';
 
 const MainAppLayout: React.FC = () => {
-  const { user, isLoggedIn, activeView, setActiveView } = useApp();
+  const { user, isLoggedIn, activeView, setActiveView, isScoreAuditOpen, closeScoreAudit } = useApp();
   const [isOnboardingActive, setIsOnboardingActive] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -88,6 +89,9 @@ const MainAppLayout: React.FC = () => {
           {renderActiveView()}
         </main>
       </div>
+
+      {/* Modal Pemeriksaan Skor & Poin Interaktif */}
+      <ScoreAuditModal isOpen={isScoreAuditOpen} onClose={closeScoreAudit} />
     </div>
   );
 };

@@ -13,6 +13,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { ActiveView } from '../types';
+import { soundManager } from '../utils/audio';
 
 export const Navbar: React.FC = () => {
   const { activeView, setActiveView, user, logout, isAllChaptersPassed } = useApp();
@@ -20,7 +21,7 @@ export const Navbar: React.FC = () => {
   const navItems: { id: ActiveView; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'dashboard', label: 'Beranda', icon: Home },
     { id: 'subjects', label: 'Mata Pelajaran', icon: BookOpen },
-    { id: 'leaderboard', label: 'Peringkat', icon: Trophy },
+    { id: 'leaderboard', label: 'Prestasi', icon: Trophy },
     { id: 'history', label: 'Riwayat', icon: History },
     { id: 'rewards', label: 'Reward', icon: Award },
     { id: 'account', label: 'Akun', icon: User },
@@ -29,7 +30,7 @@ export const Navbar: React.FC = () => {
 
   const mobileNavItems: { id: ActiveView; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { id: 'dashboard', label: 'Beranda', icon: Home },
-    { id: 'leaderboard', label: 'Peringkat', icon: Trophy },
+    { id: 'leaderboard', label: 'Prestasi', icon: Trophy },
     { id: 'history', label: 'Riwayat', icon: History },
     { id: 'account', label: 'Akun', icon: User },
   ];
@@ -79,7 +80,10 @@ export const Navbar: React.FC = () => {
               <button
                 key={item.id}
                 id={`sidebar-nav-${item.id}`}
-                onClick={() => setActiveView(item.id)}
+                onClick={() => {
+                  soundManager.playClick();
+                  setActiveView(item.id);
+                }}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition ${
                   isActive
                     ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
@@ -124,7 +128,10 @@ export const Navbar: React.FC = () => {
               <button
                 key={item.id}
                 id={`mobile-nav-${item.id}`}
-                onClick={() => setActiveView(item.id)}
+                onClick={() => {
+                  soundManager.playClick();
+                  setActiveView(item.id);
+                }}
                 className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition ${
                   isActive
                     ? 'text-indigo-600 font-bold'

@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { AnimatedCounter } from './AnimatedCounter';
+import { soundManager } from '../utils/audio';
 import {
   CheckCircle2,
   AlertCircle,
@@ -23,6 +25,12 @@ export const EvaluationResultView: React.FC = () => {
     setActiveView,
     isAllChaptersPassed,
   } = useApp();
+
+  useEffect(() => {
+    if (lastEvaluation?.passed) {
+      soundManager.playSuccessChime();
+    }
+  }, [lastEvaluation]);
 
   if (!lastEvaluation) {
     return (
@@ -89,7 +97,7 @@ export const EvaluationResultView: React.FC = () => {
                 isPassed ? 'text-emerald-600' : 'text-amber-600'
               }`}
             >
-              {score}%
+              <AnimatedCounter value={score} suffix="%" />
             </span>
           </div>
 

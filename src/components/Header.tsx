@@ -1,9 +1,10 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { soundManager } from '../utils/audio';
 import { Heart, Clock, Sparkles, User as UserIcon, RefreshCw } from 'lucide-react';
 
 export const Header: React.FC = () => {
-  const { user, secondsUntilNextLife, refillLives, setActiveView } = useApp();
+  const { user, secondsUntilNextLife, refillLives, setActiveView, openScoreAudit } = useApp();
 
   // Format indonesian date: "Senin, 21 September 2026"
   const today = new Date('2026-09-21T09:00:00');
@@ -54,16 +55,24 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Right Info: Points & Lives */}
-        <div className="flex items-center gap-2 sm:gap-4">
-          {/* Points display */}
-          <div 
-            onClick={() => setActiveView('leaderboard')}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 cursor-pointer hover:bg-amber-100 transition"
-            title="Total Poin Belajar"
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Tombol Cek Skor Poin */}
+          <button
+            onClick={() => {
+              soundManager.playClick();
+              openScoreAudit();
+            }}
+            id="header-check-points-btn"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-xs font-extrabold text-xs transition active:scale-95 cursor-pointer"
+            title="Klik untuk mengecek skor poin dan evaluasi semua bab"
           >
-            <Sparkles className="w-4 h-4 text-amber-600" />
-            <span className="text-xs font-bold">{user.points} Poin</span>
-          </div>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden xs:inline">Cek Poin</span>
+            <span className="xs:hidden">Cek</span>
+            <span className="bg-amber-700/60 px-1.5 py-0.5 rounded-md text-[10px] ml-0.5 font-black">
+              {user.points}
+            </span>
+          </button>
 
           {/* Hearts / Lives Display */}
           <div 

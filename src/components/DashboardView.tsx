@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { BannerCarousel } from './BannerCarousel';
+import { AnimatedCounter } from './AnimatedCounter';
+import { soundManager } from '../utils/audio';
 import {
   Play,
   CheckCircle2,
@@ -31,6 +33,7 @@ export const DashboardView: React.FC = () => {
     passedChaptersCount,
     overallAverageScore,
     isAllChaptersPassed,
+    openScoreAudit,
   } = useApp();
 
   // Active subject selected in the Pembelajaran tab
@@ -79,6 +82,18 @@ export const DashboardView: React.FC = () => {
               <Award className="w-5 h-5 text-indigo-600" />
               <span>Status Reward</span>
             </button>
+
+            <button
+              onClick={() => {
+                soundManager.playClick();
+                openScoreAudit();
+              }}
+              id="dashboard-check-score-points-btn"
+              className="flex items-center justify-center gap-2 px-5 py-4 rounded-2xl bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 text-amber-900 font-bold text-sm transition cursor-pointer"
+            >
+              <Sparkles className="w-5 h-5 text-amber-600" />
+              <span>Cek Skor Poin</span>
+            </button>
           </div>
         </div>
 
@@ -90,7 +105,9 @@ export const DashboardView: React.FC = () => {
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-slate-900">{passedChaptersCount}</span>
+              <span className="text-2xl font-black text-slate-900">
+                <AnimatedCounter value={passedChaptersCount} />
+              </span>
               <span className="text-xs font-semibold text-slate-500">/ {totalChaptersCount}</span>
             </div>
             <p className="text-[11px] font-medium text-slate-500 mt-1">Nilai &ge; 80%</p>
@@ -102,20 +119,34 @@ export const DashboardView: React.FC = () => {
               <TrendingUp className="w-4 h-4 text-indigo-600" />
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-slate-900">{overallAverageScore}%</span>
+              <span className="text-2xl font-black text-slate-900">
+                <AnimatedCounter value={overallAverageScore} suffix="%" />
+              </span>
             </div>
             <p className="text-[11px] font-medium text-slate-500 mt-1">Akumulasi nilai bab</p>
           </div>
 
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+          <div 
+            onClick={() => {
+              soundManager.playClick();
+              openScoreAudit();
+            }}
+            id="dashboard-metric-total-points-card"
+            className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/50 hover:bg-amber-50 border border-amber-200/80 cursor-pointer transition group"
+            title="Klik untuk mengecek skor poin dan evaluasi semua bab"
+          >
             <div className="flex items-center justify-between text-slate-500 mb-1">
-              <span className="text-xs font-bold uppercase tracking-wider">Total Poin</span>
-              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-900">Total Poin</span>
+              <span className="text-[10px] font-extrabold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-md group-hover:bg-amber-200 transition">
+                Cek Poin &rarr;
+              </span>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-slate-900">{user.points}</span>
+              <span className="text-2xl font-black text-slate-900">
+                <AnimatedCounter value={user.points} />
+              </span>
             </div>
-            <p className="text-[11px] font-medium text-slate-500 mt-1">Peringkat siswa aktif</p>
+            <p className="text-[11px] font-medium text-amber-700/80 mt-1">Audit skor & bab mandiri</p>
           </div>
 
           <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200/80">

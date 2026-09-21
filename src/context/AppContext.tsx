@@ -68,6 +68,9 @@ interface AppContextType {
   passedChaptersCount: number;
   overallAverageScore: number;
   isChapterUnlocked: (subjectId: string, chapterNumber: number) => boolean;
+  isScoreAuditOpen: boolean;
+  openScoreAudit: () => void;
+  closeScoreAudit: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -221,6 +224,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedChapterNumber, setSelectedChapterNumber] = useState<number | null>(3);
   const [lastEvaluation, setLastEvaluation] = useState<EvaluationData | null>(null);
   const [secondsUntilNextLife, setSecondsUntilNextLife] = useState<number>(60);
+  const [isScoreAuditOpen, setIsScoreAuditOpen] = useState<boolean>(false);
+
+  const openScoreAudit = () => {
+    setIsScoreAuditOpen(true);
+  };
+
+  const closeScoreAudit = () => {
+    setIsScoreAuditOpen(false);
+  };
 
   // Sync to LocalStorage
   useEffect(() => {
@@ -637,6 +649,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         passedChaptersCount,
         overallAverageScore,
         isChapterUnlocked,
+        isScoreAuditOpen,
+        openScoreAudit,
+        closeScoreAudit,
       }}
     >
       {children}

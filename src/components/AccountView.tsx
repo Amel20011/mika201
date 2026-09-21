@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { EditProfileModal } from './EditProfileModal';
+import { AnimatedCounter } from './AnimatedCounter';
 import {
   User,
   School,
@@ -105,7 +106,7 @@ export const AccountView: React.FC = () => {
               Bab Selesai
             </span>
             <span className="text-xl font-black text-slate-900 mt-0.5 block">
-              {passedChaptersCount} / {totalChaptersCount}
+              <AnimatedCounter value={passedChaptersCount} /> / {totalChaptersCount}
             </span>
           </div>
 
@@ -114,7 +115,7 @@ export const AccountView: React.FC = () => {
               Total Soal
             </span>
             <span className="text-xl font-black text-slate-900 mt-0.5 block">
-              {totalQuestionsAnswered}
+              <AnimatedCounter value={totalQuestionsAnswered} />
             </span>
           </div>
 
@@ -123,7 +124,7 @@ export const AccountView: React.FC = () => {
               Jawaban Benar
             </span>
             <span className="text-xl font-black text-emerald-600 mt-0.5 block">
-              {correctAnswersCount}
+              <AnimatedCounter value={correctAnswersCount} />
             </span>
           </div>
 
@@ -132,7 +133,7 @@ export const AccountView: React.FC = () => {
               Jawaban Salah
             </span>
             <span className="text-xl font-black text-rose-600 mt-0.5 block">
-              {incorrectAnswersCount}
+              <AnimatedCounter value={incorrectAnswersCount} />
             </span>
           </div>
 
@@ -141,7 +142,7 @@ export const AccountView: React.FC = () => {
               Rata-rata Nilai
             </span>
             <span className="text-xl font-black text-indigo-600 mt-0.5 block">
-              {overallAverageScore}%
+              <AnimatedCounter value={overallAverageScore} suffix="%" />
             </span>
           </div>
 
@@ -150,7 +151,7 @@ export const AccountView: React.FC = () => {
               Total Poin
             </span>
             <span className="text-xl font-black text-amber-600 mt-0.5 block">
-              {user.points}
+              <AnimatedCounter value={user.points} />
             </span>
           </div>
         </div>

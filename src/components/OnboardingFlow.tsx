@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { EducationLevel } from '../types';
-import { Bot, ArrowRight, CheckCircle2, Loader2, Sparkles, School, User, Calendar } from 'lucide-react';
+import { Bot, ArrowRight, CheckCircle2, Loader2, Sparkles, School, User, Calendar, Volume2, VolumeX } from 'lucide-react';
+import { TypewriterText } from './TypewriterText';
+import { soundManager } from '../utils/audio';
 
 export const OnboardingFlow: React.FC<{ onCancel: () => void }> = ({ onCancel }) => {
   const { completeOnboarding } = useApp();
@@ -13,11 +15,26 @@ export const OnboardingFlow: React.FC<{ onCancel: () => void }> = ({ onCancel })
   const [selectedLevel, setSelectedLevel] = useState<EducationLevel>('SMA');
   const [detectedReason, setDetectedReason] = useState<string>('');
 
+  // Control visibility of form inputs and buttons until text typing completes
+  const [isTextReady, setIsTextReady] = useState(false);
+  const [isMuted, setIsMuted] = useState(soundManager.getMuted());
+
+  const toggleSound = () => {
+    const muted = soundManager.toggleMute();
+    setIsMuted(muted);
+  };
+
+  const goToStep = (nextStep: 1 | 2 | 3 | 4 | 5) => {
+    setIsTextReady(false);
+    setStep(nextStep);
+  };
+
   // Step 1: Name validation & next
   const handleStep1Next = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    setStep(2);
+    soundManager.playClick();
+    goToStep(2);
   };
 
   // Step 2: Age validation & next
@@ -25,7 +42,8 @@ export const OnboardingFlow: React.FC<{ onCancel: () => void }> = ({ onCancel })
     e.preventDefault();
     const numAge = parseInt(age, 10);
     if (isNaN(numAge) || numAge <= 0 || numAge > 99) return;
-    setStep(3);
+    soundManager.playClick();
+    goToStep(3);
   };
 
   // Step 3: School & automatic level detection
@@ -64,13 +82,14 @@ export const OnboardingFlow: React.FC<{ onCancel: () => void }> = ({ onCancel })
 
     setSelectedLevel(autoLevel);
     setDetectedReason(reason);
-    setStep(4);
+    soundManager.playClick();
+    goToStep(4);
   };
 
   // Step 4: Confirm level & show loading animation
   const handleConfirmLevel = () => {
-    setStep(5);
-    // Simulate smart curation loading for 2 seconds
+    soundManager.playSuccessChime();
+    goToStep(5);
     setTimeout(() => {
       completeOnboarding(name, parseInt(age, 10) || 16, school, selectedLevel);
     }, 2000);
@@ -86,7 +105,7 @@ export const OnboardingFlow: React.FC<{ onCancel: () => void }> = ({ onCancel })
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6">
-      <div className="max-w-xl w-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+      <div className="max-w-xl w-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden transition-all">
         {/* Step Progress Bar */}
         <div className="w-full bg-slate-100 h-2">
           <div
@@ -97,248 +116,309 @@ export const OnboardingFlow: React.FC<{ onCancel: () => void }> = ({ onCancel })
 
         <div className="p-6 sm:p-10 space-y-6">
           {/* Aurel Avatar & Dialogue Bubble Header */}
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-indigo-600/20">
-              <Bot className="w-7 h-7" />
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-slate-900 text-base">Aurel</span>
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  Pemandu Belajar
-                </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-indigo-600/20">
+                <Bot className="w-7 h-7" />
               </div>
-              <p className="text-xs text-slate-500 font-medium">AURELIA EDU Onboarding</p>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-slate-900 text-base">Aurel</span>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    Pemandu Belajar
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium">AURELIA EDU Onboarding</p>
+              </div>
             </div>
+
+            {/* Sound Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleSound}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+              title={isMuted ? 'Aktifkan Efek Suara' : 'Matikan Efek Suara'}
+              aria-label="Toggle Sound"
+            >
+              {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-indigo-600" />}
+            </button>
           </div>
 
           {/* TAHAP 1: NAMA */}
           {step === 1 && (
-            <div className="space-y-6 animate-fadeIn">
-              {/* Aurel Speech Bubble */}
-              <div className="relative p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-slate-800 text-sm sm:text-base font-medium leading-relaxed">
-                <p>Halo, saya Aurel.</p>
-                <p className="mt-1">Sebelum mulai belajar, mari kita kenalan terlebih dahulu.</p>
-                <p className="mt-3 font-bold text-indigo-900">Siapa nama kamu?</p>
+            <div className="space-y-6">
+              {/* Aurel Speech Bubble with Typewriter Animation */}
+              <div className="relative p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-slate-800 text-sm sm:text-base font-medium leading-relaxed min-h-[110px] flex flex-col justify-center">
+                <TypewriterText
+                  key="step-1-text"
+                  lines={[
+                    'Halo, saya Aurel.',
+                    'Sebelum mulai belajar, mari kita kenalan terlebih dahulu.',
+                    'Siapa nama kamu?',
+                  ]}
+                  speed={25}
+                  onComplete={() => setIsTextReady(true)}
+                />
               </div>
 
-              <form onSubmit={handleStep1Next} className="space-y-4">
-                <div>
-                  <label htmlFor="student-name-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    Nama Lengkap
-                  </label>
-                  <div className="relative">
-                    <User className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      id="student-name-input"
-                      type="text"
-                      required
-                      autoFocus
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Contoh: Farhan Ardiansyah"
-                      className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-hidden font-medium text-slate-900 placeholder:text-slate-400 text-base transition"
-                    />
+              {/* Form and Buttons: ONLY SHOWN AFTER TYPING TRANSITION COMPLETES */}
+              {isTextReady && (
+                <form onSubmit={handleStep1Next} className="space-y-4 animate-fadeIn">
+                  <div>
+                    <label
+                      htmlFor="student-name-input"
+                      className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
+                    >
+                      Nama Lengkap
+                    </label>
+                    <div className="relative">
+                      <User className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        id="student-name-input"
+                        type="text"
+                        required
+                        autoFocus
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Contoh: Farhan Ardiansyah"
+                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-hidden font-medium text-slate-900 placeholder:text-slate-400 text-base transition"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={onCancel}
-                    className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition"
-                  >
-                    Kembali
-                  </button>
-                  <button
-                    type="submit"
-                    id="onboarding-step1-next"
-                    disabled={!name.trim()}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-sm shadow-md transition"
-                  >
-                    <span>Lanjut</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </form>
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={onCancel}
+                      className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition"
+                    >
+                      Kembali
+                    </button>
+                    <button
+                      type="submit"
+                      id="onboarding-step1-next"
+                      disabled={!name.trim()}
+                      className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-sm shadow-md transition transform active:scale-95"
+                    >
+                      <span>Lanjut</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
 
           {/* TAHAP 2: UMUR */}
           {step === 2 && (
-            <div className="space-y-6 animate-fadeIn">
-              {/* Aurel Speech Bubble */}
-              <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-slate-800 text-sm sm:text-base font-medium leading-relaxed">
-                <p>Senang berkenalan denganmu, <strong className="text-indigo-900">{name}</strong>!</p>
-                <p className="mt-2 font-bold text-indigo-900">Berapa umur kamu?</p>
+            <div className="space-y-6">
+              {/* Aurel Speech Bubble with Typewriter Animation */}
+              <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-slate-800 text-sm sm:text-base font-medium leading-relaxed min-h-[90px] flex flex-col justify-center">
+                <TypewriterText
+                  key="step-2-text"
+                  lines={[
+                    `Senang berkenalan denganmu, ${name}!`,
+                    'Berapa umur kamu saat ini?',
+                  ]}
+                  speed={25}
+                  onComplete={() => setIsTextReady(true)}
+                />
               </div>
 
-              <form onSubmit={handleStep2Next} className="space-y-4">
-                <div>
-                  <label htmlFor="student-age-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    Umur (Tahun)
-                  </label>
-                  <div className="relative">
-                    <Calendar className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      id="student-age-input"
-                      type="number"
-                      required
-                      min="6"
-                      max="90"
-                      autoFocus
-                      value={age}
-                      onChange={(e) => setAge(e.target.value)}
-                      placeholder="Contoh: 17"
-                      className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-hidden font-medium text-slate-900 placeholder:text-slate-400 text-base transition"
-                    />
+              {/* Form and Buttons: ONLY SHOWN AFTER TYPING TRANSITION COMPLETES */}
+              {isTextReady && (
+                <form onSubmit={handleStep2Next} className="space-y-4 animate-fadeIn">
+                  <div>
+                    <label
+                      htmlFor="student-age-input"
+                      className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
+                    >
+                      Umur (Tahun)
+                    </label>
+                    <div className="relative">
+                      <Calendar className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        id="student-age-input"
+                        type="number"
+                        required
+                        min="6"
+                        max="90"
+                        autoFocus
+                        value={age}
+                        onChange={(e) => setAge(e.target.value)}
+                        placeholder="Contoh: 17"
+                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-hidden font-medium text-slate-900 placeholder:text-slate-400 text-base transition"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition"
-                  >
-                    Sebelumnya
-                  </button>
-                  <button
-                    type="submit"
-                    id="onboarding-step2-next"
-                    disabled={!age}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-sm shadow-md transition"
-                  >
-                    <span>Lanjut</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </form>
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={() => goToStep(1)}
+                      className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition"
+                    >
+                      Sebelumnya
+                    </button>
+                    <button
+                      type="submit"
+                      id="onboarding-step2-next"
+                      disabled={!age}
+                      className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-sm shadow-md transition transform active:scale-95"
+                    >
+                      <span>Lanjut</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
 
           {/* TAHAP 3: SEKOLAH / KAMPUS */}
           {step === 3 && (
-            <div className="space-y-6 animate-fadeIn">
-              {/* Aurel Speech Bubble */}
-              <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-slate-800 text-sm sm:text-base font-medium leading-relaxed">
-                <p className="font-bold text-indigo-900">
-                  Saat ini kamu bersekolah atau kuliah di mana?
-                </p>
-                <p className="mt-1 text-xs text-slate-600">
-                  Informasi ini membantu Aurelia Edu memetakan kurikulum dan jenjang materi yang relevan.
-                </p>
+            <div className="space-y-6">
+              {/* Aurel Speech Bubble with Typewriter Animation */}
+              <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-slate-800 text-sm sm:text-base font-medium leading-relaxed min-h-[95px] flex flex-col justify-center">
+                <TypewriterText
+                  key="step-3-text"
+                  lines={[
+                    'Saat ini kamu bersekolah atau kuliah di mana?',
+                    'Informasi ini membantu memetakan materi yang relevan.',
+                  ]}
+                  speed={25}
+                  onComplete={() => setIsTextReady(true)}
+                />
               </div>
 
-              <form onSubmit={handleStep3Next} className="space-y-4">
-                <div>
-                  <label htmlFor="student-school-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    Nama Sekolah atau Universitas
-                  </label>
-                  <div className="relative">
-                    <School className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      id="student-school-input"
-                      type="text"
-                      required
-                      autoFocus
-                      value={school}
-                      onChange={(e) => setSchool(e.target.value)}
-                      placeholder="Contoh: SMA Negeri 8 Jakarta atau ITB"
-                      className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-hidden font-medium text-slate-900 placeholder:text-slate-400 text-base transition"
-                    />
+              {/* Form and Buttons: ONLY SHOWN AFTER TYPING TRANSITION COMPLETES */}
+              {isTextReady && (
+                <form onSubmit={handleStep3Next} className="space-y-4 animate-fadeIn">
+                  <div>
+                    <label
+                      htmlFor="student-school-input"
+                      className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
+                    >
+                      Nama Sekolah atau Universitas
+                    </label>
+                    <div className="relative">
+                      <School className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        id="student-school-input"
+                        type="text"
+                        required
+                        autoFocus
+                        value={school}
+                        onChange={(e) => setSchool(e.target.value)}
+                        placeholder="Contoh: SMA Negeri 8 Jakarta atau ITB"
+                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-hidden font-medium text-slate-900 placeholder:text-slate-400 text-base transition"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setStep(2)}
-                    className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition"
-                  >
-                    Sebelumnya
-                  </button>
-                  <button
-                    type="submit"
-                    id="onboarding-step3-next"
-                    disabled={!school.trim()}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-sm shadow-md transition"
-                  >
-                    <span>Lanjut</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </form>
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={() => goToStep(2)}
+                      className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition"
+                    >
+                      Sebelumnya
+                    </button>
+                    <button
+                      type="submit"
+                      id="onboarding-step3-next"
+                      disabled={!school.trim()}
+                      className="flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-sm shadow-md transition transform active:scale-95"
+                    >
+                      <span>Lanjut</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
 
           {/* TAHAP 4: PENYESUAIAN JENJANG OTOMATIS & KONFIRMASI */}
           {step === 4 && (
-            <div className="space-y-6 animate-fadeIn">
-              {/* Aurel Speech Bubble */}
-              <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-slate-800 text-sm sm:text-base font-medium leading-relaxed">
-                <p className="font-bold text-indigo-900">
-                  Sistem telah menganalisis data kamu!
-                </p>
-                <p className="mt-1 text-xs text-slate-600">
-                  {detectedReason} Silakan konfirmasi atau pilih jenjang yang tepat jika perlu penyesuaian:
-                </p>
+            <div className="space-y-6">
+              {/* Aurel Speech Bubble with Typewriter Animation */}
+              <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-slate-800 text-sm sm:text-base font-medium leading-relaxed min-h-[90px] flex flex-col justify-center">
+                <TypewriterText
+                  key="step-4-text"
+                  lines={[
+                    'Sistem telah menganalisis profil kamu!',
+                    `${detectedReason} Silakan konfirmasi jenjang yang sesuai:`,
+                  ]}
+                  speed={25}
+                  onComplete={() => setIsTextReady(true)}
+                />
               </div>
 
-              {/* Level Cards Selector */}
-              <div className="space-y-2.5">
-                {levelOptions.map((opt) => {
-                  const isSelected = selectedLevel === opt.level;
-                  return (
-                    <div
-                      key={opt.level}
-                      onClick={() => setSelectedLevel(opt.level)}
-                      id={`level-option-${opt.level}`}
-                      className={`p-4 rounded-xl border-2 cursor-pointer transition flex items-center justify-between ${
-                        isSelected
-                          ? 'border-indigo-600 bg-indigo-50/50 shadow-xs'
-                          : 'border-slate-200 hover:border-slate-300 bg-white'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-sm text-slate-900">{opt.label}</h4>
-                          {isSelected && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
-                              Terpilih
-                            </span>
-                          )}
+              {/* Options & Button: ONLY SHOWN AFTER TYPING TRANSITION COMPLETES */}
+              {isTextReady && (
+                <div className="space-y-4 animate-fadeIn">
+                  {/* Level Cards Selector */}
+                  <div className="space-y-2.5">
+                    {levelOptions.map((opt) => {
+                      const isSelected = selectedLevel === opt.level;
+                      return (
+                        <div
+                          key={opt.level}
+                          onClick={() => {
+                            soundManager.playClick();
+                            setSelectedLevel(opt.level);
+                          }}
+                          id={`level-option-${opt.level}`}
+                          className={`p-4 rounded-xl border-2 cursor-pointer transition flex items-center justify-between ${
+                            isSelected
+                              ? 'border-indigo-600 bg-indigo-50/50 shadow-xs'
+                              : 'border-slate-200 hover:border-slate-300 bg-white'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-sm text-slate-900">{opt.label}</h4>
+                              {isSelected && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
+                                  Terpilih
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5">{opt.desc}</p>
+                          </div>
+                          <div
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                              isSelected ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300'
+                            }`}
+                          >
+                            {isSelected && <CheckCircle2 className="w-4 h-4" />}
+                          </div>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">{opt.desc}</p>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        isSelected ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300'
-                      }`}>
-                        {isSelected && <CheckCircle2 className="w-4 h-4" />}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  type="button"
-                  onClick={() => setStep(3)}
-                  className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition"
-                >
-                  Sebelumnya
-                </button>
-                <button
-                  type="button"
-                  id="onboarding-confirm-level-btn"
-                  onClick={handleConfirmLevel}
-                  className="flex items-center gap-2 px-7 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition"
-                >
-                  <span>Mulai Belajar</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={() => goToStep(3)}
+                      className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition"
+                    >
+                      Sebelumnya
+                    </button>
+                    <button
+                      type="button"
+                      id="onboarding-confirm-level-btn"
+                      onClick={handleConfirmLevel}
+                      className="flex items-center gap-2 px-7 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition transform active:scale-95"
+                    >
+                      <span>Mulai Belajar</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -351,10 +431,10 @@ export const OnboardingFlow: React.FC<{ onCancel: () => void }> = ({ onCancel })
               </div>
               <div className="space-y-2 max-w-sm">
                 <h3 className="text-lg font-extrabold text-slate-900">
-                  Menyesuaikan pengalaman belajar kamu…
+                  Menyiapkan ruang belajar mandiri kamu…
                 </h3>
                 <p className="text-xs text-slate-500 font-medium">
-                  Menyiapkan kurikulum {selectedLevel}, bab 1 hingga bab 8, sistem evaluasi, serta akun belajar pribadi.
+                  Mengorganisir kurikulum {selectedLevel}, Bab 1 hingga Bab 8, bank soal evaluasi, serta sistem pencapaian belajar pribadi.
                 </p>
               </div>
             </div>
