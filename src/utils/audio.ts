@@ -119,30 +119,50 @@ class SoundManager {
     }
   }
 
-  // Button click / navigation pop
+  // Button click / navigation pop - DIMATIKAN sesuai permintaan pengguna (hanya panduan, jawaban benar, dan cek poin)
   public playClick() {
+    // Disabled: User requested no sound for clicks/navigation
+    return;
+  }
+
+  // Jawaban Benar sound effect (harmonic bright chime)
+  public playCorrect() {
     const ctx = this.getContext();
     if (!ctx) return;
 
     try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+      const notes = [587.33, 880.0]; // D5, A5 bright concord
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
 
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(320, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(180, ctx.currentTime + 0.05);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.07);
 
-      gain.gain.setValueAtTime(0.06, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.08, ctx.currentTime + idx * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.07 + 0.22);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
 
-      osc.start();
-      osc.stop(ctx.currentTime + 0.05);
+        osc.start(ctx.currentTime + idx * 0.07);
+        osc.stop(ctx.currentTime + idx * 0.07 + 0.22);
+      });
     } catch {
       // ignore
     }
+  }
+
+  // Jawaban Salah - DIMATIKAN sesuai permintaan pengguna
+  public playIncorrect() {
+    // Disabled: User requested no sound for incorrect answers
+    return;
+  }
+
+  // Life loss - DIMATIKAN sesuai permintaan pengguna
+  public playLifeLoss() {
+    // Disabled: User requested no sound for life loss
+    return;
   }
 
   // Harmonic chime for sequential audit steps (ascending pitch)

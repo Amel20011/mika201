@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
+import { soundManager } from '../utils/audio';
 import {
   Heart,
   Clock,
   CheckCircle2,
   XCircle,
-  ArrowRight,
-  HelpCircle,
-  AlertTriangle,
   RefreshCw,
   ArrowLeft,
 } from 'lucide-react';
@@ -156,62 +154,75 @@ export const QuizView: React.FC = () => {
   const currentQ = questions[currentQuestionIndex];
   const progressPercent = Math.round(((currentQuestionIndex + 1) / questions.length) * 100);
 
+  // Auto-advance timer ref
+  const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        clearTimeout(autoAdvanceTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleSelectOption = (key: 'A' | 'B' | 'C' | 'D') => {
     if (isAnswerSubmitted) return;
     setSelectedOption(key);
-  };
-
-  const handleConfirmAnswer = () => {
-    if (!selectedOption || isAnswerSubmitted) return;
     setIsAnswerSubmitted(true);
 
-    const isCorrect = selectedOption === currentQ.correctAnswer;
+    const isCorrect = key === currentQ.correctAnswer;
+    const newCorrect = correctCount + (isCorrect ? 1 : 0);
+    const newIncorrect = incorrectCount + (!isCorrect ? 1 : 0);
+
     if (isCorrect) {
       setCorrectCount((prev) => prev + 1);
+      // Mainkan sound jawaban benar (khusus jawaban benar)
+      soundManager.playCorrect();
     } else {
       setIncorrectCount((prev) => prev + 1);
       decrementLife();
+      // Tanpa suara untuk jawaban salah sesuai instruksi user
     }
-  };
 
-  const handleNextQuestion = () => {
-    setSelectedOption(null);
-    setIsAnswerSubmitted(false);
-
-    if (currentQuestionIndex + 1 < questions.length) {
-      setCurrentQuestionIndex((prev) => prev + 1);
-    } else {
-      // Quiz Finished! Submit results
-      sessionStorage.removeItem(sessionKey);
-      submitQuizResult(
-        currentSubject.id,
-        currentChapter.chapterNumber,
-        correctCount + (selectedOption === currentQ.correctAnswer ? 1 : 0),
-        incorrectCount + (selectedOption !== currentQ.correctAnswer ? 1 : 0),
-        questions.length
-      );
-    }
+    // Otomatis lanjut ke soal selanjutnya tanpa tombol "Lanjutkan"
+    autoAdvanceTimerRef.current = setTimeout(() => {
+      if (currentQuestionIndex + 1 < questions.length) {
+        setSelectedOption(null);
+        setIsAnswerSubmitted(false);
+        setCurrentQuestionIndex((prev) => prev + 1);
+      } else {
+        // Kuis Selesai! Submit hasil otomatis
+        sessionStorage.removeItem(sessionKey);
+        submitQuizResult(
+          currentSubject.id,
+          currentChapter.chapterNumber,
+          newCorrect,
+          newIncorrect,
+          questions.length
+        );
+      }
+    }, 1300);
   };
 
   return (
-    <div className="space-y-6 pb-24 lg:pb-12 max-w-3xl mx-auto">
+    <div className="space-y-5 pb-24 lg:pb-12 max-w-3xl mx-auto select-none">
       {/* Quiz Top Header */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={() => {
                 if (confirm('Keluar dari latihan? Progres sesi ini dapat disimpan di peramban.')) {
                   setActiveView('chapter-detail');
                 }
               }}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 transition"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 transition shrink-0"
               title="Keluar"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div>
-              <span className="text-xs font-bold text-slate-500 block">
+            <div className="min-w-0">
+              <span className="text-[11px] font-bold text-slate-500 block truncate">
                 {currentSubject.name} • Bab {currentChapter.chapterNumber}
               </span>
               <h2 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
@@ -222,7 +233,8 @@ export const QuizView: React.FC = () => {
 
           {/* Real-time Lives Counter */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 shrink-0">
-            <div className="flex items-center gap-0.5">
+            <Heart className="w-4 h-4 text-rose-500 fill-rose-500 animate-pulse sm:hidden" />
+            <div className="hidden sm:flex items-center gap-0.5">
               {[1, 2, 3, 4, 5].map((idx) => (
                 <Heart
                   key={idx}
@@ -234,7 +246,7 @@ export const QuizView: React.FC = () => {
                 />
               ))}
             </div>
-            <span className="text-xs font-black text-rose-900 ml-1">{user.lives}/5</span>
+            <span className="text-xs font-black text-rose-900 ml-0.5">{user.lives}/5</span>
           </div>
         </div>
 
@@ -242,7 +254,7 @@ export const QuizView: React.FC = () => {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs font-bold text-slate-600">
             <span>Soal {currentQuestionIndex + 1} dari {questions.length}</span>
-            <span>{progressPercent}%</span>
+            <span className="text-indigo-600 font-extrabold">{progressPercent}%</span>
           </div>
           <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
             <div
@@ -254,39 +266,41 @@ export const QuizView: React.FC = () => {
       </div>
 
       {/* Question Card */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
-        <div className="space-y-2">
-          <span className="text-[11px] font-black tracking-wider uppercase text-indigo-600">
-            Pertanyaan {currentQuestionIndex + 1}
-          </span>
-          <h3 className="text-lg sm:text-xl font-bold text-slate-900 leading-relaxed">
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-xs space-y-5">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black tracking-wider uppercase text-indigo-600">
+              Pertanyaan {currentQuestionIndex + 1}
+            </span>
+            {isAnswerSubmitted && (
+              <span className="text-[11px] font-bold text-indigo-600 animate-pulse flex items-center gap-1">
+                <span>Lanjut otomatis...</span>
+              </span>
+            )}
+          </div>
+          <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-relaxed">
             {currentQ.question}
           </h3>
         </div>
 
-        {/* Options List (Large touch-friendly buttons) */}
-        <div className="space-y-3">
+        {/* Options List (Klik langsung evaluasi & otomatis lanjut) */}
+        <div className="space-y-2.5">
           {currentQ.options.map((opt) => {
             const isSelected = selectedOption === opt.key;
             const isCorrectAnswer = opt.key === currentQ.correctAnswer;
 
-            let buttonStyle = 'border-slate-200 hover:border-indigo-300 bg-white text-slate-800';
+            let buttonStyle = 'border-slate-200 hover:border-indigo-400 bg-white text-slate-800 active:bg-slate-50';
             let badgeStyle = 'border-slate-300 text-slate-600 bg-slate-50';
-
-            if (isSelected && !isAnswerSubmitted) {
-              buttonStyle = 'border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-600/20 text-indigo-950 font-bold';
-              badgeStyle = 'border-indigo-600 bg-indigo-600 text-white';
-            }
 
             if (isAnswerSubmitted) {
               if (isCorrectAnswer) {
-                buttonStyle = 'border-emerald-500 bg-emerald-50/80 text-emerald-950 font-bold';
+                buttonStyle = 'border-emerald-500 bg-emerald-50 text-emerald-950 font-bold ring-2 ring-emerald-500/20';
                 badgeStyle = 'border-emerald-600 bg-emerald-600 text-white';
               } else if (isSelected && !isCorrectAnswer) {
-                buttonStyle = 'border-rose-400 bg-rose-50/80 text-rose-950 font-bold';
+                buttonStyle = 'border-rose-400 bg-rose-50 text-rose-950 font-bold ring-2 ring-rose-500/20';
                 badgeStyle = 'border-rose-600 bg-rose-600 text-white';
               } else {
-                buttonStyle = 'border-slate-200 opacity-60 text-slate-500';
+                buttonStyle = 'border-slate-200 opacity-50 text-slate-400 pointer-events-none';
               }
             }
 
@@ -297,13 +311,13 @@ export const QuizView: React.FC = () => {
                 id={`quiz-opt-${opt.key}`}
                 disabled={isAnswerSubmitted}
                 onClick={() => handleSelectOption(opt.key)}
-                className={`w-full p-4 sm:p-4.5 rounded-2xl border-2 text-left transition-all flex items-center justify-between gap-4 cursor-pointer active:scale-99 ${buttonStyle}`}
+                className={`w-full p-3.5 sm:p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between gap-3.5 cursor-pointer active:scale-99 ${buttonStyle}`}
               >
-                <div className="flex items-center gap-3.5">
+                <div className="flex items-center gap-3">
                   <span className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center font-extrabold text-xs shrink-0 ${badgeStyle}`}>
                     {opt.key}
                   </span>
-                  <span className="text-sm sm:text-base">{opt.text}</span>
+                  <span className="text-sm sm:text-base leading-snug">{opt.text}</span>
                 </div>
 
                 {isAnswerSubmitted && isCorrectAnswer && (
@@ -320,56 +334,38 @@ export const QuizView: React.FC = () => {
         {/* Feedback & Explanation Box */}
         {isAnswerSubmitted && (
           <div
-            className={`p-4 sm:p-5 rounded-2xl border space-y-2 animate-fadeIn ${
+            className={`p-4 rounded-2xl border space-y-2 animate-in fade-in duration-200 ${
               selectedOption === currentQ.correctAnswer
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
-                : 'bg-rose-50 border-rose-200 text-rose-950'
+                ? 'bg-emerald-50/90 border-emerald-200 text-emerald-950'
+                : 'bg-rose-50/90 border-rose-200 text-rose-950'
             }`}
           >
-            <div className="flex items-center gap-2 font-bold text-sm">
-              {selectedOption === currentQ.correctAnswer ? (
-                <>
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  <span>Jawaban Tepat! (+15 Poin)</span>
-                </>
-              ) : (
-                <>
-                  <XCircle className="w-5 h-5 text-rose-600" />
-                  <span>Jawaban Kurang Tepat (-1 Nyawa)</span>
-                </>
-              )}
+            <div className="flex items-center justify-between font-bold text-xs sm:text-sm">
+              <div className="flex items-center gap-2">
+                {selectedOption === currentQ.correctAnswer ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Jawaban Benar! (+15 Poin)</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>Jawaban Salah (-1 Nyawa)</span>
+                  </>
+                )}
+              </div>
+              <span className="text-[11px] font-semibold text-slate-500">
+                {currentQuestionIndex + 1 < questions.length ? 'Memuat soal berikutnya...' : 'Menghitung hasil...'}
+              </span>
             </div>
-            <div className="text-xs sm:text-sm font-medium leading-relaxed pt-1 border-t border-black/5">
-              <strong className="block text-[11px] uppercase tracking-wider mb-0.5">
+            <div className="text-xs sm:text-sm leading-relaxed pt-1.5 border-t border-black/5">
+              <strong className="block text-[10px] uppercase tracking-wider mb-0.5 text-slate-600">
                 Pembahasan Jawaban:
               </strong>
               {currentQ.explanation}
             </div>
           </div>
         )}
-
-        {/* Action Button */}
-        <div className="pt-2">
-          {!isAnswerSubmitted ? (
-            <button
-              onClick={handleConfirmAnswer}
-              id="quiz-submit-answer-btn"
-              disabled={!selectedOption}
-              className="w-full py-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-sm sm:text-base shadow-md transition"
-            >
-              Periksa Jawaban
-            </button>
-          ) : (
-            <button
-              onClick={handleNextQuestion}
-              id="quiz-next-question-btn"
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-sm sm:text-base shadow-md transition"
-            >
-              <span>{currentQuestionIndex + 1 < questions.length ? 'Soal Berikutnya' : 'Lihat Hasil Evaluasi'}</span>
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );

@@ -25,21 +25,29 @@ export function initViewportLock() {
     { passive: false }
   );
 
-  // 3. Matikan Double-tap to zoom (dua ketukan cepat < 300ms)
-  let lastTouchEndTime = 0;
+  // 3. Matikan pull-to-refresh dan overscroll bounce (swipe atas/bawah melar)
+  let startTouchY = 0;
   document.addEventListener(
-    'touchend',
+    'touchstart',
     (e: TouchEvent) => {
-      const now = Date.now();
-      // Hanya batalkan jika bukan elemen tombol submit atau input form
-      const target = e.target as HTMLElement | null;
-      const isInteractiveInput =
-        target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT');
+      if (e.touches.length === 1) {
+        startTouchY = e.touches[0].clientY;
+      }
+    },
+    { passive: true }
+  );
 
-      if (!isInteractiveInput && now - lastTouchEndTime <= 300) {
+  document.addEventListener(
+    'touchmove',
+    (e: TouchEvent) => {
+      // Jika mencoba menarik ke bawah saat scroll sudah di paling atas (rubber banding)
+      const touchY = e.touches[0].clientY;
+      const isPullingDownAtTop = window.scrollY <= 0 && touchY > startTouchY;
+      
+      if (isPullingDownAtTop) {
+        // Cegah browser memantul elastis ke bawah
         e.preventDefault();
       }
-      lastTouchEndTime = now;
     },
     { passive: false }
   );
@@ -65,12 +73,13 @@ export function initViewportLock() {
     }
   });
 
-  // 6. Cegah overscroll bounce elastis di level window
+  // 6. Cegah overscroll bounce pada boundary scroll
   window.addEventListener(
     'scroll',
     () => {
-      if (window.scrollY < 0) {
-        window.scrollTo(0, 0);
+      // Pastikan tidak ada scroll horizontal liar
+      if (window.scrollX !== 0) {
+        window.scrollTo(0, window.scrollY);
       }
     },
     { passive: true }

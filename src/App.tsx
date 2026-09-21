@@ -18,6 +18,7 @@ import { HistoryView } from './components/HistoryView';
 import { AccountView } from './components/AccountView';
 import { SettingsView } from './components/SettingsView';
 import { ScoreAuditModal } from './components/ScoreAuditModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const MainAppLayout: React.FC = () => {
   const { user, isLoggedIn, activeView, setActiveView, isScoreAuditOpen, closeScoreAudit } = useApp();
@@ -31,7 +32,7 @@ const MainAppLayout: React.FC = () => {
     }
 
     return (
-      <>
+      <ErrorBoundary>
         <WelcomeView
           onOpenLogin={() => setIsAuthModalOpen(true)}
           onStartRegister={() => setIsOnboardingActive(true)}
@@ -40,7 +41,7 @@ const MainAppLayout: React.FC = () => {
           isOpen={isAuthModalOpen}
           onClose={() => setIsAuthModalOpen(false)}
         />
-      </>
+      </ErrorBoundary>
     );
   }
 
@@ -85,21 +86,27 @@ const MainAppLayout: React.FC = () => {
       <div className="lg:pl-64 flex-1 flex flex-col min-h-screen">
         <Header />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          {renderActiveView()}
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8">
+          <ErrorBoundary>
+            {renderActiveView()}
+          </ErrorBoundary>
         </main>
       </div>
 
       {/* Modal Pemeriksaan Skor & Poin Interaktif */}
-      <ScoreAuditModal isOpen={isScoreAuditOpen} onClose={closeScoreAudit} />
+      <ErrorBoundary>
+        <ScoreAuditModal isOpen={isScoreAuditOpen} onClose={closeScoreAudit} />
+      </ErrorBoundary>
     </div>
   );
 };
 
 export default function App() {
   return (
-    <AppProvider>
-      <MainAppLayout />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <MainAppLayout />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

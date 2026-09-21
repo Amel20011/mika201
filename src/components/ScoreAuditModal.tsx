@@ -60,60 +60,81 @@ export const ScoreAuditModal: React.FC<ScoreAuditModalProps> = ({ isOpen, onClos
       pointsEarned: number;
     }> = [];
 
-    userSubjects.forEach((subject) => {
+    // Safe array access
+    const subjects = Array.isArray(userSubjects) ? userSubjects : [];
+    const histories = Array.isArray(history) ? history : [];
+
+    subjects.forEach((subject) => {
+      if (!subject || !Array.isArray(subject.chapters)) return;
+      
       subject.chapters.forEach((chapter) => {
+        if (!chapter) return;
+        
         // Cari riwayat kuis untuk bab ini
-        const chapterHistory = history.filter(
-          (h) => h.subjectId === subject.id && h.chapterNumber === chapter.chapterNumber
+        const chapterHistory = histories.filter(
+          (h) => h && h.subjectId === subject.id && h.chapterNumber === chapter.chapterNumber
         );
 
         let correct = 0;
         let incorrect = 0;
         let totalQ = chapter.questions?.length || 5;
+        const chapterScore = typeof chapter.score === 'number' ? chapter.score : 0;
 
         if (chapterHistory.length > 0) {
-          const bestAttempt = chapterHistory.reduce((max, h) => (h.score > max.score ? h : max), chapterHistory[0]);
-          correct = bestAttempt.correct;
-          incorrect = bestAttempt.incorrect;
-          totalQ = bestAttempt.totalQuestions;
+          const bestAttempt = chapterHistory.reduce((max, h) => ((h?.score || 0) > (max?.score || 0) ? h : max), chapterHistory[0]);
+          correct = bestAttempt?.correct || 0;
+          incorrect = bestAttempt?.incorrect || 0;
+          totalQ = bestAttempt?.totalQuestions || totalQ;
         } else if (chapter.completed) {
-          correct = Math.round((chapter.score / 100) * totalQ);
-          incorrect = totalQ - correct;
+          correct = Math.round((chapterScore / 100) * totalQ);
+          incorrect = Math.max(0, totalQ - correct);
         }
 
         // Poin bab: 100 poin jika lulus (>=80%), ditambah skor proporsional
-        const isPassed = chapter.score >= 80;
-        const pts = chapter.completed ? (isPassed ? 100 : Math.round(chapter.score * 0.5)) : 0;
+        const isPassed = chapterScore >= 80;
+        const pts = chapter.completed ? (isPassed ? 100 : Math.round(chapterScore * 0.5)) : 0;
 
         allChaptersList.push({
-          subjectName: subject.name,
+          subjectName: subject.name || 'Pelajaran',
           subjectId: subject.id,
           chapterNumber: chapter.chapterNumber,
-          title: chapter.title,
-          score: chapter.score || 0,
-          completed: chapter.completed || chapter.score > 0,
-          status: chapter.status,
+          title: chapter.title || `Bab ${chapter.chapterNumber}`,
+          score: chapterScore,
+          completed: Boolean(chapter.completed || chapterScore > 0),
+          status: chapter.status || 'Belum Dikerjakan',
           correctCount: correct,
           incorrectCount: incorrect,
           totalQuestions: totalQ,
-          pointsEarned: pts,
+          pointsEarned: isNaN(pts) ? 0 : pts,
         });
       });
     });
 
     // Total target skor persentase (rata-rata atau kelulusan)
-    const targetPercent = overallAverageScore > 0 ? overallAverageScore : (passedChaptersCount > 0 ? Math.round((passedChaptersCount / (totalChaptersCount || 8)) * 100) : 0);
-    const targetPoints = user.points;
+    const targetPercent = typeof overallAverageScore === 'number' && overallAverageScore > 0 
+      ? overallAverageScore 
+      : (passedChaptersCount > 0 ? Math.round((passedChaptersCount / (totalChaptersCount || 8)) * 100) : 0);
+    const targetPoints = user?.points || 0;
 
     return {
       chapters: allChaptersList,
-      targetPercent,
-      targetPoints,
+      targetPercent: isNaN(targetPercent) ? 0 : targetPercent,
+      targetPoints: isNaN(targetPoints) ? 0 : targetPoints,
     };
-  }, [userSubjects, history, overallAverageScore, passedChaptersCount, totalChaptersCount, user.points]);
+  }, [userSubjects, history, overallAverageScore, passedChaptersCount, totalChaptersCount, user?.points]);
 
-  // Audio ticker ref
+  // Audio ticker & RAF ref
   const audioIntervalRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const isMountedRef = useRef<boolean>(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
 
   // Jalankan alur pemeriksaan sekuensial saat modal dibuka
   useEffect(() => {
@@ -124,6 +145,10 @@ export const ScoreAuditModal: React.FC<ScoreAuditModalProps> = ({ isOpen, onClos
       setDisplayPercentage(0);
       setDisplayPoints(0);
       setShowSummary(false);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
       return;
     }
 
@@ -137,9 +162,11 @@ export const ScoreAuditModal: React.FC<ScoreAuditModalProps> = ({ isOpen, onClos
 
     let step = 0;
     const stepInterval = setInterval(() => {
+      if (!isMountedRef.current) return;
       if (step < auditSteps.length) {
         soundManager.playStepPing(step);
-        setCompletedSteps((prev) => [...prev, auditSteps[step].id]);
+        const stepId = auditSteps[step].id;
+        setCompletedSteps((prev) => (prev.includes(stepId) ? prev : [...prev, stepId]));
         step++;
         setCurrentStepIndex(step);
       } else {
@@ -149,26 +176,31 @@ export const ScoreAuditModal: React.FC<ScoreAuditModalProps> = ({ isOpen, onClos
         // Mulai animasi angka besar berputar cepat dari 0% ke target
         startNumberAnimation(auditData.targetPercent, auditData.targetPoints);
       }
-    }, 520); // waktu tiap langkah verifikasi lingkaran kecil
+    }, 480); // waktu tiap langkah verifikasi lingkaran kecil
 
     return () => {
       clearInterval(stepInterval);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
       if (audioIntervalRef.current) {
         clearInterval(audioIntervalRef.current);
       }
     };
-  }, [isOpen]);
+  }, [isOpen, auditData.targetPercent, auditData.targetPoints]);
 
   // Animasi angka besar cepat dari 0 sampai nilai target dengan efek audio ticker
   const startNumberAnimation = (targetScore: number, targetPts: number) => {
-    const finalScore = Math.max(0, Math.min(100, targetScore));
-    const finalPoints = Math.max(0, targetPts);
+    const finalScore = Math.max(0, Math.min(100, targetScore || 0));
+    const finalPoints = Math.max(0, targetPts || 0);
 
-    const duration = 1400; // ms
+    const duration = 1200; // ms
     const startTime = performance.now();
     let lastAudioTick = 0;
 
     const animateFrame = (now: number) => {
+      if (!isMountedRef.current) return;
       const elapsed = now - startTime;
       const progress = Math.min(1, elapsed / duration);
       // Easing out cubic
@@ -180,23 +212,24 @@ export const ScoreAuditModal: React.FC<ScoreAuditModalProps> = ({ isOpen, onClos
       setDisplayPercentage(currentScore);
       setDisplayPoints(currentPts);
 
-      // Mainkan suara ticker angka setiap beberapa ms
-      if (now - lastAudioTick > 45 && progress < 0.95) {
+      // Mainkan suara ticker angka setiap beberapa ms (efek penghitung angka cek poin)
+      if (now - lastAudioTick > 40 && progress < 0.95) {
         soundManager.playCounterTick(1 + progress * 0.5);
         lastAudioTick = now;
       }
 
       if (progress < 1) {
-        requestAnimationFrame(animateFrame);
+        rafRef.current = requestAnimationFrame(animateFrame);
       } else {
         setDisplayPercentage(finalScore);
         setDisplayPoints(finalPoints);
         soundManager.playSuccessChime();
         setShowSummary(true);
+        rafRef.current = null;
       }
     };
 
-    requestAnimationFrame(animateFrame);
+    rafRef.current = requestAnimationFrame(animateFrame);
   };
 
   if (!isOpen) return null;
@@ -413,7 +446,10 @@ export const ScoreAuditModal: React.FC<ScoreAuditModalProps> = ({ isOpen, onClos
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 px-5 sm:px-6 py-4 bg-slate-50 border-t border-slate-100">
           <button
             onClick={() => {
-              soundManager.playClick();
+              if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current);
+                rafRef.current = null;
+              }
               // Reset dan ulangi pemeriksaan
               setCurrentStepIndex(0);
               setCompletedSteps([]);
@@ -424,9 +460,14 @@ export const ScoreAuditModal: React.FC<ScoreAuditModalProps> = ({ isOpen, onClos
 
               let step = 0;
               const stepInterval = setInterval(() => {
+                if (!isMountedRef.current) {
+                  clearInterval(stepInterval);
+                  return;
+                }
                 if (step < auditSteps.length) {
                   soundManager.playStepPing(step);
-                  setCompletedSteps((prev) => [...prev, auditSteps[step].id]);
+                  const stepId = auditSteps[step].id;
+                  setCompletedSteps((prev) => (prev.includes(stepId) ? prev : [...prev, stepId]));
                   step++;
                   setCurrentStepIndex(step);
                 } else {
@@ -444,10 +485,7 @@ export const ScoreAuditModal: React.FC<ScoreAuditModalProps> = ({ isOpen, onClos
           </button>
 
           <button
-            onClick={() => {
-              soundManager.playClick();
-              onClose();
-            }}
+            onClick={onClose}
             id="finish-score-audit-btn"
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-600/25 transition cursor-pointer"
           >
